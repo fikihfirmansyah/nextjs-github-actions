@@ -30,7 +30,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Detect package manager
         id: detect-package-manager
         run: |
@@ -44,61 +44,25 @@ jobs:
             echo "Unable to determine package manager"
             exit 1
           fi
-          
+
       - name: Setup Docker
         uses: docker/setup-buildx-action@v3
-      
+
       - name: Build Next.js app in Docker
         run: |
-          # Create a Dockerfile for building the Next.js app
-          cat > Dockerfile.build << EOF
-          FROM node:16-alpine
-          
-          WORKDIR /app
-          
-          # Copy package.json first
-          COPY package*.json ./
-          
-          # Copy yarn.lock if it exists
-          COPY yarn*.lock* ./
-          
-          # Install dependencies based on package manager
-          RUN if [ -f "yarn.lock" ]; then \
-                yarn install; \
-              else \
-                npm ci; \
-              fi
-          
-          # Copy the rest of the project
-          COPY . .
-          
-          # Add next export to package.json if it doesn't exist
-          RUN if [ -f "yarn.lock" ]; then \
-                if ! grep -q "\"export\":" package.json; then \
-                  sed -i 's/\"scripts\": {/\"scripts\": {\n    \"export\": \"next export\",/g' package.json; \
-                fi; \
-                yarn build && yarn export; \
-              else \
-                if ! grep -q "\"export\":" package.json; then \
-                  sed -i 's/\"scripts\": {/\"scripts\": {\n    \"export\": \"next export\",/g' package.json; \
-                fi; \
-                npm run build && npm run export; \
-              fi
-          EOF
-          
-          # Build using Docker
-          docker build -t nextjs-builder -f Dockerfile.build .
-          
+          # Build using the Dockerfile in the repository
+          docker build -t nextjs-builder .
+
           # Extract the output directory from the container
           docker create --name nextjs-export nextjs-builder
           docker cp nextjs-export:/app/out ./out
           docker rm nextjs-export
-          
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
         with:
           static_site_generator: next
-          
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
