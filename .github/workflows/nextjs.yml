@@ -56,13 +56,15 @@ jobs:
           
           WORKDIR /app
           
-          # Copy package.json and lock files
+          # Copy package.json first
           COPY package*.json ./
+          
+          # Copy yarn.lock if it exists
           COPY yarn*.lock* ./
           
           # Install dependencies based on package manager
           RUN if [ -f "yarn.lock" ]; then \
-                yarn install --frozen-lockfile; \
+                yarn install; \
               else \
                 npm ci; \
               fi
@@ -70,10 +72,16 @@ jobs:
           # Copy the rest of the project
           COPY . .
           
-          # Build and export
+          # Add next export to package.json if it doesn't exist
           RUN if [ -f "yarn.lock" ]; then \
+                if ! grep -q "\"export\":" package.json; then \
+                  sed -i 's/\"scripts\": {/\"scripts\": {\n    \"export\": \"next export\",/g' package.json; \
+                fi; \
                 yarn build && yarn export; \
               else \
+                if ! grep -q "\"export\":" package.json; then \
+                  sed -i 's/\"scripts\": {/\"scripts\": {\n    \"export\": \"next export\",/g' package.json; \
+                fi; \
                 npm run build && npm run export; \
               fi
           EOF
